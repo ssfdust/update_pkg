@@ -1,0 +1,6 @@
+all:
+	bash download.sh
+	find . -name "PKGBUILD" -exec sed "s/^\([ ]\+make\)$$/\1\ -j8/" \-i \{\} \; 
+	find . -name "PKGBUILD" -exec sed "s/^\([\t]\+make\)$$/\1\ -j8/" \-i \{\} \; 
+	bash build.sh
+
