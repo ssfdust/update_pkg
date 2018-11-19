@@ -23,7 +23,7 @@ def execute(cmd, window):
         sys.exit(2)
     elif len(err) > 0:
         window.msgbox(err, title="Erro Message")
-        return out, err
+    return out, err
 
 def build(window):
     if os.path.exists('build'):
@@ -103,8 +103,8 @@ def fetchpasswd(window):
     use_sotre = False
     if passwd is None:
         code, passwd = window.passwordbox("Please enter your user password:")
-    else:
         use_sotre = True
+    else:
         code = 'ok'
     if code == 'ok':
         chk = subprocess.Popen('sudo -k'.format(passwd), shell=True,
@@ -139,9 +139,7 @@ def orphans(err, passwd, window):
         packages = ' '.join(tag)
         cmd = 'echo {} | sudo -S pacman -R --noconfirm {}'.format(passwd, packages)
         info, err = execute(cmd, window)
-        window.msgbox(info)
-        if ret != 0:
-            window.msgbox("Error occured.")
+        window.msgbox(info, title="Pacman Log")
 
 def storepasswd(passwd):
     session = {'passwd': passwd, 'time': datetime.now()}
