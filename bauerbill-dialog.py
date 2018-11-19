@@ -19,11 +19,11 @@ def execute(cmd, window):
     out = out.decode()
     err = err.decode()
     if subp.returncode != 0:
-        window.msgbox(err, title="Fatal Error")
+        window.msgbox(out + '\n' + err, title="Fatal Error")
         sys.exit(2)
     elif len(err) > 0:
         window.msgbox(err, title="Erro Message")
-    return out, err
+        return out, err
 
 def build(window):
     if os.path.exists('build'):
@@ -89,6 +89,10 @@ def main():
             sys.exit(0)
     elif mode == 'update':
         info, err = execute(cmds['update'].format(passwd), window)
+        if 'Installed orphans' in err:
+            answer = window.yesno("Do you want to delete the orphan packages?")
+            if answer == 'ok':
+                orphans(err, passwd, window)
         if len(info) > 0:
             window.msgbox(info)
 
@@ -96,9 +100,11 @@ def main():
 
 def fetchpasswd(window):
     passwd = restorepasswd()
+    use_sotre = False
     if passwd is None:
         code, passwd = window.passwordbox("Please enter your user password:")
     else:
+        use_sotre = True
         code = 'ok'
     if code == 'ok':
         chk = subprocess.Popen('sudo -k'.format(passwd), shell=True,
@@ -121,8 +127,21 @@ def fetchpasswd(window):
         window.msgbox("No password.Abort!", width=25, height=3)
         sys.exit(3)
 
-    storepasswd(passwd)
+    if use_sotre:
+        storepasswd(passwd)
     return passwd
+
+def orphans(err, passwd, window):
+    packages = err.split('Installed orphans:')[1].strip()
+    pac_list = [(i, "", True) for i in packages.split()]
+    code, tag = window.checklist("Select Packages", choices=pac_list)
+    if code == 'ok':
+        packages = ' '.join(tag)
+        cmd = 'echo {} | sudo -S pacman -R --noconfirm {}'.format(passwd, packages)
+        info, err = execute(cmd, window)
+        window.msgbox(info)
+        if ret != 0:
+            window.msgbox("Error occured.")
 
 def storepasswd(passwd):
     session = {'passwd': passwd, 'time': datetime.now()}
