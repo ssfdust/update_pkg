@@ -2,12 +2,15 @@ from dialog import Dialog
 import subprocess
 import os
 import sys
+from pickle import dump, load
+from datetime import datetime, timedelta
 
 cmds = {
     'search': 'echo {} | sudo -S bauerbill -Ss {} --aur-only',
     'install': 'echo {} | sudo -S bauerbill -S {} --aur-only',
     'update': 'echo {} | sudo -S bauerbill -Su --aur-only'
 }
+session_file = '/tmp/bauerbill-dialog.session'
 
 def execute(cmd, window):
     subp = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE,
@@ -38,7 +41,7 @@ def build(window):
         if answer == 'ok':
             os.system('rm -rf build')
     else:
-        window.msgbox("No build directory found")
+        window.msgbox("No package directory found", width=38, height=5)
 
 def parse_packages(info, window):
     if len(info) > 0:
@@ -79,6 +82,8 @@ def main():
             info, err = execute(cmds['install'].format(passwd, packages), window)
             if len(info) > 0:
                 window.msgbox(info)
+            else:
+                window.msgbox("No packages need to update.", width=25, height=5)
         else:
             window.msgbox("Bye~")
             sys.exit(0)
@@ -90,7 +95,11 @@ def main():
     build(window)
 
 def fetchpasswd(window):
-    code, passwd = window.passwordbox("Please enter your user password:")
+    passwd = restorepasswd()
+    if passwd is None:
+        code, passwd = window.passwordbox("Please enter your user password:")
+    else:
+        code = 'ok'
     if code == 'ok':
         chk = subprocess.Popen('sudo -k'.format(passwd), shell=True,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -111,6 +120,24 @@ def fetchpasswd(window):
     else:
         window.msgbox("No password.Abort!", width=25, height=3)
         sys.exit(3)
+
+    storepasswd(passwd)
+    return passwd
+
+def storepasswd(passwd):
+    session = {'passwd': passwd, 'time': datetime.now()}
+    with open(session_file, 'wb') as f:
+        dump(session, f)
+
+    return True
+
+def restorepasswd():
+    passwd = None
+    if os.path.exists(session_file):
+        with open(session_file, 'rb') as f:
+            session = load(f)
+            if session['time'] > datetime.now() - timedelta(minutes=180):
+                passwd = session['passwd']
 
     return passwd
 
